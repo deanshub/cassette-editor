@@ -1,10 +1,16 @@
 import JSZip, { JSZipObject } from "jszip";
+import { Cassette } from "./Cassette";
+import { prettifyFileName } from "./prettifyFileName";
 
 interface Zip {
   name: string;
-  files: JSZipObject[];
+  files: File[];
 }
-export type File = { type: string; fileName: string };
+export interface File {
+  prettyName: string;
+  data: Cassette;
+  name: string;
+}
 
 async function b64toBlob(
   b64Data: string,
@@ -21,13 +27,34 @@ export async function unzip(file: string): Promise<Zip> {
 
 export async function unzipBlob(file: Blob): Promise<Zip> {
   const zip = await JSZip.loadAsync(file);
-  const entriesNames: JSZipObject[] = [];
-  zip.forEach((relativePath, zipEntry) => {
-    entriesNames.push(zipEntry);
+  const entriesNames: Promise<File>[] = [];
+  zip.forEach((_: string, zipEntry: JSZipObject) => {
+    if (!zipEntry.dir) {
+      entriesNames.push(
+        (async () => {
+          const data = await zipEntry.async("string");
+          const cassette: Cassette = JSON.parse(data);
+          const prettyName = prettifyFileName(cassette);
+          return {
+            name: zipEntry.name,
+            data: {
+              ...cassette,
+              response: {
+                ...cassette.response,
+                body: atob(cassette.response.body),
+              },
+            },
+            prettyName,
+          };
+        })()
+      );
+    }
   });
+
+  const files = await Promise.all(entriesNames);
   return {
     name: zip.name,
-    files: entriesNames,
+    files,
   };
 }
 

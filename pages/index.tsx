@@ -1,11 +1,12 @@
-import Head from 'next/head'
+import Head from "next/head";
 import { GetServerSideProps } from "next";
 import { useRef, useState, useEffect, ChangeEvent } from "react";
 import { useRouter } from "next/router";
-import {unzipBlob, File} from '../src/zip'
+import { unzipBlob, File } from "../src/zip";
 import { validateUrl } from "../src/validateUrl";
-import PencilIcon from "heroicons/react/solid/Pencil";
-import PencilIconOutline from "heroicons/react/outline/Pencil";
+// import PencilIcon from "heroicons/react/solid/Pencil";
+// import PencilIconOutline from "heroicons/react/outline/Pencil";
+import { CassetteForm } from "../src/components/CassetteForm";
 
 type Props =
   | {
@@ -48,29 +49,25 @@ function defualtFiles(props: Props): PageState {
   return props;
 }
 
-
 export default function Home(props: Props) {
   const textInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const [pageState, setPageState] = useState<PageState>(defualtFiles(props));
+  const [selectedFile, setSelectedFile] = useState<File>();
 
   const userSelectedFile = async (e: ChangeEvent<HTMLInputElement>) => {
     try {
       if (!e.target.files?.[0]) {
         throw new Error("File not selected");
       }
-      const blob = e.target.files[0]
-      console.log(blob)
+      const blob = e.target.files[0];
       const zip = await unzipBlob(blob);
 
       setPageState({
         origin: "Client",
         state: "listFiles",
         archiveUrl: blob.name,
-        files: zip.files.map((e) => ({
-          type: e.dir ? "Directory" : "File",
-          fileName: e.name,
-        })),
+        files: zip.files,
       });
     } catch (err) {
       setPageState({
@@ -79,7 +76,7 @@ export default function Home(props: Props) {
         message: err.message,
       });
     }
-  }
+  };
 
   return (
     <>
@@ -109,7 +106,9 @@ export default function Home(props: Props) {
             name="webArchive"
             ref={textInputRef}
             type="url"
-            defaultValue={pageState.state==='listFiles'? pageState.archiveUrl:''}
+            defaultValue={
+              pageState.state === "listFiles" ? pageState.archiveUrl : ""
+            }
             placeholder="https://example.com/file.zip"
           />
           <label
@@ -142,41 +141,42 @@ export default function Home(props: Props) {
                   {pageState.archiveUrl}
                 </code>
               </h3>
-              <ul className="pt-4 grid lg:grid-cols-3 md:grid-cols-2 sm:grid-cols-1">
-                {pageState.files
-                  .filter((f) => f.type === "File")
-                  .map((file) => {
-                    const path = encodeURIComponent(file.fileName);
-                    const archive = encodeURIComponent(pageState.archiveUrl);
+              <div className="flex">
+                <ul className="pt-4 w-1/3">
+                  {pageState.files.map((file) => {
                     return (
-                      <li key={file.fileName}>
+                      <li key={file.name}>
                         <a
+                          onClick={() => setSelectedFile(file)}
                           className="flex items-center p-2 group"
-                          href={
-                            pageState.origin === "Server"
-                              ? `/api/unzip?path=${path}&archive=${archive}`
-                              : undefined
-                          }
                         >
-                          <PencilIcon className="flex-none hidden inline w-6 h-6 group-hover:inline" />
-                          <PencilIconOutline className="flex-none inline w-6 h-6 group-hover:hidden" />
                           <code className="flex-1 pl-1 break-all">
-                            {file.fileName}
+                            {file.prettyName}
                           </code>
                         </a>
                       </li>
                     );
                   })}
-              </ul>
+                </ul>
+                {selectedFile && (
+                  <section className="bg-white shadow-inner rounded p-4 w-2/3">
+                    <CassetteForm
+                      cassette={selectedFile.data}
+                      onChange={(key, value) =>
+                        console.log(selectedFile.name, key, value)
+                      }
+                    />
+                  </section>
+                )}
+              </div>
             </>
           )}
         </div>
       </main>
 
-      <footer>
-      </footer>
+      <footer></footer>
     </>
-  )
+  );
 }
 
 export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {

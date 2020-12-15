@@ -7,6 +7,7 @@ import { validateUrl } from "../src/validateUrl";
 // import PencilIcon from "heroicons/react/solid/Pencil";
 // import PencilIconOutline from "heroicons/react/outline/Pencil";
 import { CassetteForm } from "../src/components/CassetteForm";
+import { getResourceTypes } from "../src/getResourceTypes";
 
 type Props =
   | {
@@ -54,6 +55,9 @@ export default function Home(props: Props) {
   const router = useRouter();
   const [pageState, setPageState] = useState<PageState>(defualtFiles(props));
   const [selectedFile, setSelectedFile] = useState<File>();
+  const [resourceTypes, setResourceTypes] = useState<Record<string, boolean>>(
+    {}
+  );
 
   const userSelectedFile = async (e: ChangeEvent<HTMLInputElement>) => {
     try {
@@ -69,6 +73,12 @@ export default function Home(props: Props) {
         archiveUrl: blob.name,
         files: zip.files,
       });
+      setResourceTypes(
+        getResourceTypes(zip.files).reduce((res, cur) => {
+          res[cur] = true;
+          return res;
+        }, {} as Record<string, boolean>)
+      );
     } catch (err) {
       setPageState({
         state: "errorReading",
@@ -141,22 +151,51 @@ export default function Home(props: Props) {
                   {pageState.archiveUrl}
                 </code>
               </h3>
+              <div className="mt-4 mb-4">
+                {Object.entries(resourceTypes).map(([resourceType, value]) => (
+                  <label
+                    key={resourceType}
+                    className="m-2 p-2 bg-white rounded-xl shadow-md"
+                  >
+                    <input
+                      type="checkbox"
+                      className="form-tick w-6 border border-gray-300 rounded-md checked:bg-blue-600 checked:border-transparent focus:outline-none"
+                      checked={value}
+                      onChange={() =>
+                        setResourceTypes({
+                          ...resourceTypes,
+                          [resourceType]: !resourceTypes[resourceType],
+                        })
+                      }
+                    />
+                    {resourceType}
+                  </label>
+                ))}
+              </div>
               <div className="flex">
                 <ul className="pt-4 w-1/3">
-                  {pageState.files.map((file) => {
-                    return (
-                      <li key={file.name}>
-                        <a
-                          onClick={() => setSelectedFile(file)}
-                          className="flex items-center p-2 group"
-                        >
-                          <code className="flex-1 pl-1 break-all">
-                            {file.prettyName}
-                          </code>
-                        </a>
-                      </li>
-                    );
-                  })}
+                  {pageState.files
+                    .filter(
+                      (file) => resourceTypes[file.data.request.resourceType]
+                    )
+                    .map((file) => {
+                      return (
+                        <li key={file.name}>
+                          <a
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setSelectedFile(file);
+                            }}
+                            className="flex items-center p-2 group"
+                            href=""
+                          >
+                            <code className="flex-1 pl-1 break-all text-sm">
+                              {file.prettyName}
+                            </code>
+                          </a>
+                        </li>
+                      );
+                    })}
                 </ul>
                 {selectedFile && (
                   <section className="bg-white shadow-inner rounded p-4 w-2/3">

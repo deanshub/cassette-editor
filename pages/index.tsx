@@ -7,7 +7,7 @@ import { validateUrl } from "../src/validateUrl";
 // import PencilIcon from "heroicons/react/solid/Pencil";
 // import PencilIconOutline from "heroicons/react/outline/Pencil";
 import { CassetteForm } from "../src/components/CassetteForm";
-import { getResourceTypes } from "../src/getResourceTypes";
+import { getResourceTypes, emojifyResourceType } from "../src/getResourceTypes";
 
 type Props =
   | {
@@ -95,7 +95,7 @@ export default function Home(props: Props) {
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <main className="min-h-screen min-w-screen bg-blue-400 md:font-mono">
+      <main className="min-h-screen min-w-screen bg-blue-200 md:font-mono">
         <form
           className="p-4 grid grid-cols-9 gap-4"
           action="/"
@@ -168,7 +168,7 @@ export default function Home(props: Props) {
                         })
                       }
                     />
-                    {resourceType}
+                    {`${resourceType} ${emojifyResourceType(resourceType)}`}
                   </label>
                 ))}
               </div>

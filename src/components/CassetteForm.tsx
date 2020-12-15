@@ -79,9 +79,9 @@ export function CassetteForm({ cassette, onChange }: Props) {
         }}
       />
       <textarea
-        className="w-full"
         style={{
           height: "-webkit-fill-available",
+          width: "100%",
         }}
         onChange={(e) => {
           onChange(`response.body`, e.target.value);

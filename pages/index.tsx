@@ -4,6 +4,7 @@ import { useRef, useState, useEffect, ChangeEvent } from "react";
 import { useRouter } from "next/router";
 import { unzipBlob, File } from "../src/zip";
 import { validateUrl } from "../src/validateUrl";
+import type { Protocol } from "devtools-protocol";
 // import PencilIcon from "heroicons/react/solid/Pencil";
 // import PencilIconOutline from "heroicons/react/outline/Pencil";
 import { CassetteForm } from "../src/components/CassetteForm";
@@ -55,9 +56,9 @@ export default function Home(props: Props) {
   const router = useRouter();
   const [pageState, setPageState] = useState<PageState>(defualtFiles(props));
   const [selectedFile, setSelectedFile] = useState<File>();
-  const [resourceTypes, setResourceTypes] = useState<Record<string, boolean>>(
-    {}
-  );
+  const [resourceTypes, setResourceTypes] = useState<
+    Record<Protocol.Network.ResourceType, boolean>
+  >({} as any);
 
   const userSelectedFile = async (e: ChangeEvent<HTMLInputElement>) => {
     try {
@@ -77,7 +78,7 @@ export default function Home(props: Props) {
         getResourceTypes(zip.files).reduce((res, cur) => {
           res[cur] = true;
           return res;
-        }, {} as Record<string, boolean>)
+        }, {} as Record<Protocol.Network.ResourceType, boolean>)
       );
     } catch (err) {
       setPageState({
@@ -152,25 +153,30 @@ export default function Home(props: Props) {
                 </code>
               </h3>
               <div className="mt-4 mb-4">
-                {Object.entries(resourceTypes).map(([resourceType, value]) => (
-                  <label
-                    key={resourceType}
-                    className="m-2 p-2 bg-white rounded-xl shadow-md"
-                  >
-                    <input
-                      type="checkbox"
-                      className="form-tick w-6 border border-gray-300 rounded-md checked:bg-blue-600 checked:border-transparent focus:outline-none"
-                      checked={value}
-                      onChange={() =>
-                        setResourceTypes({
-                          ...resourceTypes,
-                          [resourceType]: !resourceTypes[resourceType],
-                        })
-                      }
-                    />
-                    {`${resourceType} ${emojifyResourceType(resourceType)}`}
-                  </label>
-                ))}
+                {Object.entries(resourceTypes).map(
+                  ([resourceType, value]: [
+                    Protocol.Network.ResourceType,
+                    boolean
+                  ]) => (
+                    <label
+                      key={resourceType}
+                      className="m-2 p-2 bg-white rounded-xl shadow-md"
+                    >
+                      <input
+                        type="checkbox"
+                        className="form-tick w-6 border border-gray-300 rounded-md checked:bg-blue-600 checked:border-transparent focus:outline-none"
+                        checked={value}
+                        onChange={() =>
+                          setResourceTypes({
+                            ...resourceTypes,
+                            [resourceType]: !resourceTypes[resourceType],
+                          })
+                        }
+                      />
+                      {`${resourceType} ${emojifyResourceType(resourceType)}`}
+                    </label>
+                  )
+                )}
               </div>
               <div className="flex">
                 <ul className="pt-4 w-1/3">

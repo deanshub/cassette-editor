@@ -1,7 +1,9 @@
 import type { Protocol } from "devtools-protocol";
 import { File } from "./zip";
 
-export function getResourceTypes(files: File[]): string[] {
+export function getResourceTypes(
+  files: File[]
+): Protocol.Network.ResourceType[] {
   const resourceTypes = new Set(files.map((c) => c.data.request.resourceType));
   return Array.from(resourceTypes);
 }

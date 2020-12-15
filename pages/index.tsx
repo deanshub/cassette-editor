@@ -2,13 +2,14 @@ import Head from "next/head";
 import { GetServerSideProps } from "next";
 import { useRef, useState, useEffect, ChangeEvent } from "react";
 import { useRouter } from "next/router";
-import { unzipBlob, File } from "../src/zip";
+import { unzipBlob, File, zipFiles } from "../src/zip";
 import { validateUrl } from "../src/validateUrl";
 import type { Protocol } from "devtools-protocol";
 // import PencilIcon from "heroicons/react/solid/Pencil";
 // import PencilIconOutline from "heroicons/react/outline/Pencil";
 import { CassetteForm } from "../src/components/CassetteForm";
 import { getResourceTypes, emojifyResourceType } from "../src/getResourceTypes";
+import { setValue } from "../src/setValue";
 
 type Props =
   | {
@@ -57,7 +58,7 @@ export default function Home(props: Props) {
   const [pageState, setPageState] = useState<PageState>(defualtFiles(props));
   const [selectedFile, setSelectedFile] = useState<File>();
   const [resourceTypes, setResourceTypes] = useState<
-    Record<Protocol.Network.ResourceType, boolean>
+    Record<Protocol.Network.ResourceType, { value: boolean; count: number }>
   >({} as any);
 
   const userSelectedFile = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -74,18 +75,19 @@ export default function Home(props: Props) {
         archiveUrl: blob.name,
         files: zip.files,
       });
-      setResourceTypes(
-        getResourceTypes(zip.files).reduce((res, cur) => {
-          res[cur] = true;
-          return res;
-        }, {} as Record<Protocol.Network.ResourceType, boolean>)
-      );
+      setResourceTypes(getResourceTypes(zip.files));
     } catch (err) {
       setPageState({
         state: "errorReading",
         archiveUrl: e.target.files?.[0]?.name ?? "unknown",
         message: err.message,
       });
+    }
+  };
+
+  const download = () => {
+    if (pageState.state === "listFiles") {
+      zipFiles({ name: pageState.archiveUrl, files: pageState.files });
     }
   };
 
@@ -146,17 +148,22 @@ export default function Home(props: Props) {
           )}
           {pageState.state === "listFiles" && (
             <>
-              <h3 className="text-xl font-thin">
-                Files in{" "}
-                <code className="inline-block p-1 text-sm leading-normal align-middle bg-blue-100 rounded">
+              <h3 className="text-l font-thin flex">
+                <code className="pl-4 text-xl w-5/6">
                   {pageState.archiveUrl}
                 </code>
+                <button
+                  className="pl-4 bg-green-100 text-center shadow rounded w-1/6"
+                  onClick={download}
+                >
+                  Download
+                </button>
               </h3>
-              <div className="mt-4 mb-4">
+              <div className="mt-4 mb-4 flex flex-wrap">
                 {Object.entries(resourceTypes).map(
-                  ([resourceType, value]: [
+                  ([resourceType, { count, value }]: [
                     Protocol.Network.ResourceType,
-                    boolean
+                    { value: boolean; count: number }
                   ]) => (
                     <label
                       key={resourceType}
@@ -169,11 +176,16 @@ export default function Home(props: Props) {
                         onChange={() =>
                           setResourceTypes({
                             ...resourceTypes,
-                            [resourceType]: !resourceTypes[resourceType],
+                            [resourceType]: {
+                              ...resourceTypes[resourceType],
+                              value: !resourceTypes[resourceType].value,
+                            },
                           })
                         }
                       />
-                      {`${resourceType} ${emojifyResourceType(resourceType)}`}
+                      {`${resourceType}(${count}) ${emojifyResourceType(
+                        resourceType
+                      )}`}
                     </label>
                   )
                 )}
@@ -182,11 +194,20 @@ export default function Home(props: Props) {
                 <ul className="pt-4 w-1/3">
                   {pageState.files
                     .filter(
-                      (file) => resourceTypes[file.data.request.resourceType]
+                      (file) =>
+                        resourceTypes[file.data.request.resourceType]?.value ??
+                        true
                     )
                     .map((file) => {
                       return (
-                        <li key={file.name}>
+                        <li
+                          key={file.name}
+                          className={
+                            file === selectedFile
+                              ? "shadow bg-blue-300 rounded"
+                              : undefined
+                          }
+                        >
                           <a
                             onClick={(e) => {
                               e.preventDefault();
@@ -207,9 +228,22 @@ export default function Home(props: Props) {
                   <section className="bg-white shadow-inner rounded p-4 w-2/3">
                     <CassetteForm
                       cassette={selectedFile.data}
-                      onChange={(key, value) =>
-                        console.log(selectedFile.name, key, value)
-                      }
+                      onChange={(key, value) => {
+                        const index = pageState.files.findIndex(
+                          (f) => f === selectedFile
+                        );
+                        const files = setValue(
+                          pageState.files,
+                          `${index}.data.${key}`,
+                          value
+                        );
+                        const newFile = files[index];
+                        setPageState({
+                          ...pageState,
+                          files,
+                        });
+                        setSelectedFile(newFile);
+                      }}
                     />
                   </section>
                 )}

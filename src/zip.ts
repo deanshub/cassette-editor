@@ -1,6 +1,7 @@
 import JSZip, { JSZipObject } from "jszip";
 import { Cassette } from "./Cassette";
 import { prettifyFileName } from "./prettifyFileName";
+import { saveAs } from "file-saver";
 
 interface Zip {
   name: string;
@@ -64,4 +65,22 @@ export async function bufferZipFile(url: string): Promise<string> {
     throw new Error(`File "${url}" not found`);
   }
   return Buffer.from(await response.arrayBuffer()).toString("base64");
+}
+
+export async function zipFiles(zip: Zip) {
+  const zipFile = new JSZip();
+  for (const file of zip.files) {
+    zipFile.file(
+      file.name,
+      JSON.stringify({
+        ...file.data,
+        response: {
+          ...file.data.response,
+          body: btoa(file.data.response.body),
+        },
+      })
+    );
+  }
+  const blob = await zipFile.generateAsync({ type: "blob" });
+  saveAs(blob, zip.name);
 }

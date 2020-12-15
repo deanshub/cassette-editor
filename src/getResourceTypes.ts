@@ -3,9 +3,15 @@ import { File } from "./zip";
 
 export function getResourceTypes(
   files: File[]
-): Protocol.Network.ResourceType[] {
-  const resourceTypes = new Set(files.map((c) => c.data.request.resourceType));
-  return Array.from(resourceTypes);
+): Record<Protocol.Network.ResourceType, { value: boolean; count: number }> {
+  const resourceTypes = files
+    .map((c) => c.data.request.resourceType)
+    .reduce((res, cur) => {
+      const count = res[cur]?.count ?? 1;
+      res[cur] = { value: true, count: count + 1 };
+      return res;
+    }, {} as Record<Protocol.Network.ResourceType, { value: boolean; count: number }>);
+  return resourceTypes;
 }
 
 export function emojifyResourceType(

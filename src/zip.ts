@@ -76,7 +76,7 @@ export async function zipFiles(zip: Zip) {
         ...file.data,
         response: {
           ...file.data.response,
-          body: btoa(unescape(file.data.response.body)),
+          body: btoa(escape(file.data.response.body)),
         },
       })
     );

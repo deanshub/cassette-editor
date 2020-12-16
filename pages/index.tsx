@@ -61,6 +61,30 @@ export default function Home(props: Props) {
     Record<Protocol.Network.ResourceType, { value: boolean; count: number }>
   >({} as any);
 
+  useEffect(() => {
+    if (props.state === "listFiles") {
+      fetch(props.archiveUrl)
+        .then((res) => res.blob())
+        .then(unzipBlob)
+        .then((zip) => {
+          setPageState({
+            origin: "Server",
+            state: "listFiles",
+            archiveUrl: props.archiveUrl,
+            files: zip.files,
+          });
+          setResourceTypes(getResourceTypes(zip.files));
+        })
+        .catch((err) => {
+          setPageState({
+            state: "errorReading",
+            archiveUrl: props.archiveUrl,
+            message: err.message,
+          });
+        });
+    }
+  }, [props]);
+
   const userSelectedFile = async (e: ChangeEvent<HTMLInputElement>) => {
     try {
       if (!e.target.files?.[0]) {
@@ -192,7 +216,7 @@ export default function Home(props: Props) {
               </div>
               <div className="flex">
                 <ul className="pt-4 w-1/3">
-                  {pageState.files
+                  {(pageState.files ?? [])
                     .filter(
                       (file) =>
                         resourceTypes[file.data.request.resourceType]?.value ??
@@ -259,14 +283,14 @@ export default function Home(props: Props) {
 }
 
 export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
-  const { archiveUrl } = ctx.query;
+  const { archive } = ctx.query;
 
-  if (archiveUrl) {
-    if (typeof archiveUrl !== "string") {
+  if (archive) {
+    if (typeof archive !== "string") {
       throw new Error("archive must be a string");
     }
 
-    validateUrl(archiveUrl);
+    validateUrl(archive);
     try {
       // const zipfile = await bufferZipFile(archive);
       ctx.res.setHeader(
@@ -277,14 +301,14 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
       return {
         props: {
           state: "listFiles",
-          archiveUrl,
+          archiveUrl: archive,
         },
       };
     } catch (e) {
       return {
         props: {
           state: "errorReading",
-          archiveUrl,
+          archiveUrl: archive,
           message: e.message,
         },
       };
